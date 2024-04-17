@@ -2,20 +2,26 @@ package com.example.scical;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.TextView;
-
+/// Our parts of the projects are:
+/// Beltran: Finding and Impelementing Math Formulas with complex function
+/// De Ramos: Debugging and testing of the App design and function
+/// Villafuerte: Designing the Layout of the App
+/// Yamada: Fixing the bugs that is found and helped in making the basic functions of the sci cal
 public class MainActivity extends AppCompatActivity {
-    Button b1, b2, b3, b4, b5, b6, b7, b8, b9, b0, bdot, bpi, bequal, bmin, bplus, bdiv, bmul, bminus, blog, bac, bc, bb1, bb2, bln, bsin, bcos, btan, binv, bsqrt, bsquare, bfact;
+    Button b1, b2, b3, b4, b5, b6, b7, b8, b9, b0, bdot, bpi, bequal, bplus, bdiv, bmul, bminus, blog, bac, bc, bb1, bb2, bln, bsin, bcos, btan, binv, bsqrt, bsquare, bfact;
     TextView tvsec, tvmain;
     String pi = "3.14159265";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_main);
 
         b1 = findViewById(R.id.b1);
@@ -51,8 +57,10 @@ public class MainActivity extends AppCompatActivity {
 
         tvmain = findViewById(R.id.tvmain);
         tvsec = findViewById(R.id.tvsec);
+        SharedPreferences preferences = getSharedPreferences("CalculatorPrefs", MODE_PRIVATE);
+        String savedInput = preferences.getString("lastInput", "");
 
-
+        tvmain.setText(savedInput);
         //OnClickListener
         b1.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -271,19 +279,49 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        bequal.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String val = tvmain.getText().toString();
-                String replacedstr = val.replace('÷', '/').replace('×', '*');
-                double result = eval(replacedstr);
-                tvmain.setText((String.valueOf(result)));
-                tvsec.setText(val);
+        bequal.setOnClickListener(v -> {
+            String expression = tvmain.getText().toString().trim();
 
+            if (!expression.isEmpty()) {
+                String replacedStr = expression.replace('÷', '/').replace('×', '*');
+
+                try {
+                    double result = eval(replacedStr);
+                    tvmain.setText(String.valueOf(result));
+                    tvsec.setText(expression);
+                } catch (Exception e) {
+                    // Handle calculation error
+                    tvmain.setText("Error");
+                    e.printStackTrace(); // Optionally, log the error
+                }
+            } else {
+                // Handle empty input error
+                tvmain.setText("Error: No input");
             }
         });
 
     }
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        String currentInput = tvmain.getText().toString();
+
+        SharedPreferences preferences = getSharedPreferences("CalculatorPrefs", MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putString("lastInput", currentInput);
+        editor.apply();
+    }
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        SharedPreferences preferences = getSharedPreferences("CalculatorPrefs", MODE_PRIVATE);
+        String savedInput = preferences.getString("lastInput", "");
+
+        tvmain.setText(savedInput);
+    }
+
 
     //Factorial function
     int factorial(int n) {
@@ -315,17 +353,12 @@ public class MainActivity extends AppCompatActivity {
                 return x;
             }
 
-            //Grammer:
-            //expression = term | expression '+' term | expression '-' term
-            //term = factor | term '*' factor | term '/' factor
-            //factor = '+' factor | '-' factor | '(' expression ')'
-            //        | number | factorName factor | factor '^' factor
 
             double parseExpression() {
                 double x = parseTerm();
                 for (; ; ) {
-                    if (eat('+')) x += parseTerm(); //Addition
-                    else if (eat('-')) x -= parseTerm(); //Subtraction
+                    if (eat('+')) x += parseTerm();
+                    else if (eat('-')) x -= parseTerm();
                     else return x;
                 }
             }
@@ -333,23 +366,23 @@ public class MainActivity extends AppCompatActivity {
             double parseTerm() {
                 double x = parseFactor();
                 for (; ; ) {
-                    if (eat('*')) x *= parseTerm(); //Multiplication
-                    else if (eat('/')) x /= parseTerm(); //Division
+                    if (eat('*')) x *= parseTerm();
+                    else if (eat('/')) x /= parseTerm();
                     else return x;
                 }
             }
 
             double parseFactor() {
 
-                if (eat('+')) return parseFactor(); //Unary Plus
-                if (eat('-')) return -parseFactor(); //Unary Minus
+                if (eat('+')) return parseFactor();
+                if (eat('-')) return -parseFactor();
 
                 double x;
                 int startPos = this.pos;
-                if (eat('(')) { // Parentheses
+                if (eat('(')) {
                     x = parseExpression();
                     eat(')');
-                } else if ((ch >= '0' && ch <= '9') || ch == '.') { //Numbers
+                } else if ((ch >= '0' && ch <= '9') || ch == '.') {
                     while ((ch >= '0' && ch <= '9') || ch == '.') nextChar();
                     x = Double.parseDouble(str.substring(startPos, this.pos));
                 } else if ((ch >= 'a' && ch <= 'z') || ch == '.') { //Functions
@@ -367,7 +400,7 @@ public class MainActivity extends AppCompatActivity {
                 } else {
                     throw new RuntimeException("Unexpected: " + (char) ch);
                 }
-                if (eat('^')) x = Math.pow(x, parseFactor()); //Exponentiation
+                if (eat('^')) x = Math.pow(x, parseFactor());
                 return x;
             }
 
